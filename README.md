@@ -1,6 +1,6 @@
 # Converclick CRM — Documentación
 
-Sistema mini-CRM para leads de Google Ads con integraciones Mautic y WhatsApp (uazapiGO).
+Sistema mini-CRM para leads de Google Ads con integraciones Mautic, WhatsApp (uazapiGO) y Chatwoot.
 
 ---
 
@@ -29,7 +29,7 @@ crm-converclick/
 │   ├── Views/          # layouts/, auth/, dashboard/, leads/, pipeline/, ...
 │   ├── Middleware/     # AuthMiddleware, AdminMiddleware
 │   ├── Helpers/        # LeadDeduplicator, PhoneNormalizer, DateHelper
-│   └── Services/       # MauticService, UazapiService
+│   └── Services/       # MauticService, UazapiService, ChatwootService
 ├── config/             # app.php, database.php, session.php
 ├── database/           # schema.sql, seed.sql
 ├── logs/               # (gitignored)
@@ -204,7 +204,27 @@ curl -X POST https://miinstancia.uazapi.com/webhook \
 
 ---
 
-## 🔌 Endpoints Completos
+## � Configuración Chatwoot
+
+### En el CRM (Integraciones → Chatwoot)
+
+| Campo | Descripción |
+|-------|-------------|
+| URL base Chatwoot | `https://app.chatwoot.com` |
+| API Access Token | Token de usuario (Perfil -> Access Token) |
+| Account ID | ID de la cuenta |
+| Inbox Token | Identificador del Inbox |
+| Secret webhook | Token para validar llamadas entrantes |
+
+### En Chatwoot (Ajustes → Integraciones → Webhooks)
+
+1. Agregar nuevo webhook
+2. URL: `https://tudominio.com/integrations/chatwoot/webhook?secret=TOKEN_SECRETO`
+3. Eventos: `conversation_created`, `message_created`, etc.
+
+---
+
+## �🔌 Endpoints Completos
 
 ### UI (requieren sesión)
 
@@ -217,6 +237,7 @@ curl -X POST https://miinstancia.uazapi.com/webhook \
 | GET | `/leads` | Lista de leads |
 | GET | `/leads/create` | Formulario nuevo lead |
 | POST | `/leads` | Crear lead |
+| GET | `/leads/export` | Exportar leads a CSV |
 | GET | `/leads/:id` | Detalle del lead |
 | GET | `/leads/:id/edit` | Editar lead |
 | POST | `/leads/:id` | Actualizar lead |
@@ -225,6 +246,7 @@ curl -X POST https://miinstancia.uazapi.com/webhook \
 | GET | `/integrations` | Configuración integraciones (admin) |
 | POST | `/integrations/mautic/save` | Guardar config Mautic |
 | POST | `/integrations/uazapi/save` | Guardar config uazapi |
+| POST | `/integrations/chatwoot/save` | Guardar config Chatwoot |
 | POST | `/integrations/uazapi/register-webhook` | Registrar webhook |
 | GET | `/integrations/uazapi/test` | Probar conexión (JSON) |
 | GET | `/users` | Lista usuarios (admin) |
@@ -242,6 +264,7 @@ curl -X POST https://miinstancia.uazapi.com/webhook \
 |--------|-----|-------------|
 | POST | `/integrations/mautic/webhook` | Recibir leads de Mautic |
 | POST | `/integrations/uazapi/webhook` | Recibir mensajes WhatsApp |
+| POST | `/integrations/chatwoot/webhook` | Recibir eventos Chatwoot |
 
 ---
 
