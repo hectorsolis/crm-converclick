@@ -1,0 +1,9 @@
+# Converclick CRM — Root .htaccess
+# Redirige todo el tráfico a /public (DocumentRoot ideal es /public)
+# Si el hosting no permite cambiar DocumentRoot, usa este archivo en la raíz
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{REQUEST_URI} !^/public/
+    RewriteRule ^(.*)$ /public/$1 [L]
+</IfModule>

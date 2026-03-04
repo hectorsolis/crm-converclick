@@ -1,0 +1,22 @@
+# Environment variables
+.env
+
+# Dependencies
+vendor/
+
+# Logs
+logs/
+*.log
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# IDEs
+.idea/
+.vscode/
+
+# Build artifacts
+dist/
+build/
+coverage/
