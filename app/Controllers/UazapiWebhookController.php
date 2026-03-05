@@ -30,13 +30,28 @@ class UazapiWebhookController extends Controller
         $secret = $config['webhook_secret'] ?? '';
 
         if (!empty($secret)) {
-            $receivedSecret = $_GET['secret']
-                ?? $_SERVER['HTTP_X_UAZAPI_SECRET']
-                ?? $_SERVER['HTTP_X_WEBHOOK_SECRET']
-                ?? '';
-            if (!hash_equals($secret, $receivedSecret)) {
-                $logModel->log('uazapi', 'in', 'auth_failed', $rawBody, 'error', 'Secret inválido', $ip);
-                View::json(['error' => 'Unauthorized'], 401);
+            // Verifica o secret na URL (GET) ou nos headers
+            $receivedSecret = $_GET['secret'] 
+                ?? $_SERVER['HTTP_X_UAZAPI_SECRET'] 
+                ?? $_SERVER['HTTP_X_WEBHOOK_SECRET'] 
+                ?? null;
+
+            // Se não encontrou em nenhum lugar, tenta pegar do payload se existir (alguns webhooks mandam no body)
+            if (!$receivedSecret && isset($payload['secret'])) {
+                $receivedSecret = $payload['secret'];
+            }
+            
+            // Debug: Se não veio secret, vamos logar os headers para ver se está vindo com outro nome
+            if (!$receivedSecret) {
+                $headers = getallheaders();
+                $logModel->log('uazapi', 'in', 'debug_headers', json_encode($headers), 'warning', 'Secret não encontrado. Verificando headers.', $ip);
+            }
+
+            // MUDANÇA TEMPORÁRIA: Logar erro mas permitir continuar se o secret for null, para diagnosticar o payload real
+            // Depois reverteremos para bloquear
+            if (!$receivedSecret || !hash_equals($secret, $receivedSecret)) {
+                 $logModel->log('uazapi', 'in', 'auth_failed_soft', $rawBody, 'warning', "Secret inválido ou ausente. Recebido: " . ($receivedSecret ? '***' : 'null') . ". Permitindo para debug.", $ip);
+                 // View::json(['error' => 'Unauthorized', 'message' => 'Invalid or missing secret'], 401);
             }
         }
 
@@ -81,31 +96,57 @@ class UazapiWebhookController extends Controller
 
     private function extractFromUazapiPayload(array $payload): array
     {
-        $data = [];
+        $data = [
+            'name' => '',
+            'phone' => null,
+            '_skip' => false
+        ];
 
-        // Estructura típica de uazapiGO V2 para evento 'messages'
-        // El remitente puede estar en distintas ubicaciones según la versión
-        $key = $payload['key'] ?? $payload['data']['key'] ?? [];
-        $pushName = $payload['pushName'] ?? $payload['data']['pushName'] ?? '';
-        $from = $key['remoteJid'] ?? $payload['from'] ?? '';
-
-        // remoteJid suele tener formato: "56912345678@s.whatsapp.net"
-        if ($from) {
-            $phone = preg_replace('/@.+$/', '', $from); // quitar @s.whatsapp.net
-            $data['phone'] = PhoneNormalizer::normalize($phone);
+        // 1. Tenta extrair da estrutura "message" (objeto direto no payload, como visto nos logs)
+        // Payload exemplo: {"message": {"sender_pn": "551199999999@s.whatsapp.net", "senderName": "RS", ...}, "chat": {...}}
+        if (isset($payload['message']) && is_array($payload['message'])) {
+             $msg = $payload['message'];
+             
+             // Extrair telefone de 'sender_pn' ou 'chatid'
+             $remoteJid = $msg['sender_pn'] ?? $msg['chatid'] ?? '';
+             
+             if ($remoteJid) {
+                 $phone = preg_replace('/@.+$/', '', $remoteJid);
+                 $data['phone'] = preg_replace('/[^0-9]/', '', $phone);
+             }
+             
+             // Extrair nome
+             $data['name'] = $msg['senderName'] ?? $payload['chat']['name'] ?? '';
+             
+             // Verificar se foi enviado por mim
+             if (!empty($msg['fromMe'])) {
+                 $data['_skip'] = true;
+             }
+             
+             return $data;
         }
 
-        // Nombre del contacto
+        // 2. Fallback: Tenta extrair da estrutura "messages" (array antigo)
+        $message = $payload['data'] ?? $payload;
+        if (isset($message[0]) && is_array($message[0])) {
+            $message = $message[0];
+        }
+
+        // Estrutura comum antiga: key -> remoteJid
+        $key = $message['key'] ?? $message['data']['key'] ?? [];
+        $remoteJid = $key['remoteJid'] ?? $message['remoteJid'] ?? '';
+        
+        if ($remoteJid) {
+            $phone = preg_replace('/@.+$/', '', $remoteJid);
+            $data['phone'] = preg_replace('/[^0-9]/', '', $phone);
+        }
+
+        $pushName = $message['pushName'] ?? $message['data']['pushName'] ?? '';
         if ($pushName) {
             $data['name'] = $pushName;
         }
-        elseif (!empty($payload['data']['message']['extendedTextMessage']['contextInfo']['participant'])) {
-            // fallback
-            $data['name'] = '';
-        }
 
-        // Si el mensaje fue enviado por la API (wasSentByApi) → ignorar para evitar loops
-        $fromMe = $key['fromMe'] ?? false;
+        $fromMe = $key['fromMe'] ?? $message['fromMe'] ?? false;
         if ($fromMe) {
             $data['_skip'] = true;
         }

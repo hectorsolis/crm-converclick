@@ -17,7 +17,10 @@ endif; ?>
         </div>
     </div>
     <div class="mb-4">
-        <label for="password" class="form-label">Contraseña</label>
+        <div class="d-flex justify-content-between align-items-center mb-1">
+            <label for="password" class="form-label mb-0">Contraseña</label>
+            <a href="/forgot-password" class="text-decoration-none small text-muted">¿Olvidó su clave?</a>
+        </div>
         <div class="input-group">
             <span class="input-group-text"><i class="bi bi-lock"></i></span>
             <input type="password" id="password" name="password" class="form-control" placeholder="••••••••" required

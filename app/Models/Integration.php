@@ -37,6 +37,11 @@ class Integration
         );
     }
 
+    public function updateConfig(string $type, array $config): void
+    {
+        $this->saveConfig($type, $config);
+    }
+
     public function isActive(string $type): bool
     {
         $row = $this->db->fetchOne('SELECT is_active FROM integrations WHERE type = ?', [$type]);

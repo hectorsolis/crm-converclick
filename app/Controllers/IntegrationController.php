@@ -71,6 +71,8 @@ class IntegrationController extends Controller
             'instance_token' => $request->post('instance_token', ''),
             'admin_token' => $request->post('admin_token', ''),
             'webhook_secret' => $request->post('webhook_secret', ''),
+            'alert_email' => $request->post('alert_email', ''),
+            'alert_phone' => $request->post('alert_phone', ''),
             'is_active' => 1,
         ];
 

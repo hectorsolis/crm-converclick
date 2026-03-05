@@ -27,6 +27,19 @@ $router = new Router();
 $request = new Request();
 
 // ──────────────────────────────────────────────────────────────
+// Dashboard WhatsApp Widget
+// ──────────────────────────────────────────────────────────────
+$router->get('/dashboard/whatsapp/status', 'DashboardWhatsAppController@status');
+
+// ──────────────────────────────────────────────────────────────
+// Recuperación de Contraseña
+// ──────────────────────────────────────────────────────────────
+$router->get('/forgot-password', 'PasswordResetController@showForgotForm');
+$router->post('/forgot-password/send', 'PasswordResetController@sendResetLink');
+$router->get('/reset-password', 'PasswordResetController@showResetForm');
+$router->post('/reset-password/update', 'PasswordResetController@resetPassword');
+
+// ──────────────────────────────────────────────────────────────
 // Rutas de Autenticación
 // ──────────────────────────────────────────────────────────────
 $router->get('/login', 'AuthController@loginForm');

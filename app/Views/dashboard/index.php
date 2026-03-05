@@ -2,6 +2,51 @@
 <div class="container-fluid">
     <!-- Stats cards -->
     <div class="row g-3 mb-4">
+        <!-- Widget WhatsApp Connection -->
+        <div class="col-12 col-md-6 col-lg-4 mb-3 mb-md-0 order-md-last">
+             <div class="card h-100 border-0 shadow-sm" id="whatsapp-widget">
+                 <div class="card-body p-3">
+                     <div class="d-flex justify-content-between align-items-center mb-2">
+                         <h6 class="card-title mb-0 fw-bold"><i class="bi bi-whatsapp me-2 text-success"></i>Estado Conexión</h6>
+                         <span class="badge rounded-pill bg-secondary" id="wa-status-badge">Cargando...</span>
+                     </div>
+                     
+                     <!-- Estado Conectado -->
+                     <div id="wa-connected" class="d-none text-center py-2">
+                         <div class="d-flex align-items-center justify-content-center mb-2">
+                             <div class="position-relative">
+                                 <i class="bi bi-phone fs-1 text-success"></i>
+                                 <span class="position-absolute top-0 start-100 translate-middle p-1 bg-success border border-light rounded-circle"></span>
+                             </div>
+                         </div>
+                         <h5 class="mb-0" id="wa-phone">--</h5>
+                         <small class="text-success fw-semibold">● En línea</small>
+                     </div>
+
+                     <!-- Estado Desconectado / QR -->
+                     <div id="wa-disconnected" class="d-none text-center">
+                         <div class="alert alert-warning py-1 small mb-2"><i class="bi bi-exclamation-triangle me-1"></i>Desconectado</div>
+                         <div id="wa-qr-container" class="my-2" style="min-height: 150px; display: flex; align-items: center; justify-content: center;">
+                             <div class="spinner-border text-primary" role="status" id="wa-qr-loading">
+                                 <span class="visually-hidden">Generando QR...</span>
+                             </div>
+                             <img id="wa-qr-img" src="" alt="Escanee el código QR" class="img-fluid d-none" style="max-height: 160px; border: 2px solid #eee; padding: 4px; border-radius: 8px;">
+                         </div>
+                         <p class="small text-muted mb-0">Escanee con WhatsApp en su teléfono<br>(Dispositivos vinculados > Vincular dispositivo)</p>
+                     </div>
+
+                     <!-- Estado Conectando -->
+                     <div id="wa-connecting" class="d-none text-center py-4">
+                         <div class="progress mb-2" style="height: 10px;">
+                             <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 100%"></div>
+                         </div>
+                         <small class="text-muted">Sincronizando...</small>
+                     </div>
+                     
+                 </div>
+             </div>
+        </div>
+
         <div class="col-6 col-md-3">
             <div class="stat-card">
                 <div class="stat-icon bg-primary-soft"><i class="bi bi-people-fill text-primary"></i></div>
@@ -98,11 +143,10 @@ endforeach; ?>
                                         <?php if ($lead['conflict_flag']): ?>
                                         <span class="badge bg-warning ms-1" title="Posible conflicto"><i
                                                 class="bi bi-exclamation-triangle"></i></span>
-                                        <?php
-    endif; ?>
+                                        <?php endif; ?>
                                     </td>
                                     <td>
-                                        <?=\App\Core\View::e(sourceBadge($lead['source']))?>
+                                        <?= sourceBadge($lead['source']) ?>
                                     </td>
                                     <td>
                                         <?=\App\Core\View::e($lead['vendedor_name'] ?? '—')?>
@@ -159,3 +203,6 @@ function sourceBadge(string $source): string
     return $badges[$source] ?? '<span class="badge bg-secondary">' . htmlspecialchars($source) . '</span>';
 }
 ?>
+
+<!-- Widget JS -->
+<?php require __DIR__ . '/widget_js.php'; ?>

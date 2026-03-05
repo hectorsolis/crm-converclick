@@ -26,6 +26,11 @@ class Database
 
         try {
             $this->pdo = new PDO($dsn, $config['username'], $config['password'], $config['options']);
+            
+            // Sincronizar timezone do MySQL com o do PHP
+            $now = new \DateTime('now', new \DateTimeZone(defined('TIMEZONE') ? TIMEZONE : 'UTC'));
+            $offset = $now->format('P'); // Ex: -03:00
+            $this->pdo->exec("SET time_zone = '$offset'");
         }
         catch (PDOException $e) {
             if (APP_DEBUG) {

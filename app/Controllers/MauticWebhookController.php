@@ -68,10 +68,22 @@ class MauticWebhookController extends Controller
         // Verificar form_id habilitado
         $formId = $this->extractFormId($payload);
         $enabledForms = (new MauticService())->getEnabledFormIds();
-        if (!empty($enabledForms) && $formId && !in_array($formId, $enabledForms)) {
-            $logModel->log('mautic', 'in', 'form_blocked', json_encode($payload), 'error',
-                "Form ID {$formId} no está habilitado", $ip);
-            View::json(['status' => 'ignored', 'reason' => 'form_not_enabled']);
+        
+        if (!empty($enabledForms)) {
+            // Se houver restrição de formulários, o ID do formulário é OBRIGATÓRIO.
+            // Isso bloqueia eventos genéricos (como lead_post_save_new) que não trazem ID de formulário
+            // e passariam despercebidos pela verificação anterior.
+            if (!$formId) {
+                $logModel->log('mautic', 'in', 'form_missing', json_encode($payload), 'warning',
+                    "Evento ignorado: Restrição de formulário ativa (" . implode(',', $enabledForms) . ") mas evento não possui ID de formulário.", $ip);
+                View::json(['status' => 'ignored', 'reason' => 'form_id_required_by_config']);
+            }
+
+            if (!in_array($formId, $enabledForms)) {
+                $logModel->log('mautic', 'in', 'form_blocked', json_encode($payload), 'error',
+                    "Form ID {$formId} no está habilitado. Permitidos: " . implode(',', $enabledForms), $ip);
+                View::json(['status' => 'ignored', 'reason' => 'form_not_enabled']);
+            }
         }
 
         if (empty($leadData['email']) && empty($leadData['phone'])) {
@@ -104,29 +116,69 @@ class MauticWebhookController extends Controller
 
     private function extractFromMauticPayload(array $payload): array
     {
-        $data = [];
+        $data = [
+            'name' => '',
+            'email' => null,
+            'phone' => null,
+            'company_name' => null
+        ];
 
-        // Estructura típica de Mautic webhook: mautic.form_on_submit
-        $contact = $payload['contact'] ?? $payload['mautic.form_on_submit'][0]['contact'] ?? null;
-        $results = $payload['results'] ?? $payload['mautic.form_on_submit'][0]['results'] ?? null;
+        // 1. Tenta extrair do evento "mautic.form_on_submit"
+        $event = $payload['mautic.form_on_submit'][0] ?? null;
 
-        if ($contact) {
-            $fields = $contact['fields']['all'] ?? $contact['fields']['core'] ?? [];
-            $data['name'] = trim(($fields['firstname'] ?? '') . ' ' . ($fields['lastname'] ?? ''));
-            $data['email'] = $fields['email'] ?? null;
-            $data['phone'] = $fields['phone'] ?? $fields['mobile'] ?? null;
-            $data['company_name'] = $fields['company'] ?? null;
-            if (isset($contact['id']))
-                $data['mautic_contact_id'] = (int)$contact['id'];
+        if ($event) {
+            // Estrutura: submission -> lead -> fields -> core
+            $lead = $event['submission']['lead'] ?? $event['lead'] ?? null;
+            
+            if ($lead && isset($lead['fields']['core'])) {
+                $fields = $lead['fields']['core'];
+                
+                // Mapeamento de campos
+                $data['email'] = $fields['email']['value'] ?? null;
+                $data['phone'] = $fields['phone']['value'] ?? $fields['mobile']['value'] ?? null;
+                
+                $firstname = $fields['firstname']['value'] ?? '';
+                $lastname = $fields['lastname']['value'] ?? '';
+                $data['name'] = trim("$firstname $lastname");
+                
+                $data['company_name'] = $fields['company']['value'] ?? null;
+                
+                if (isset($lead['id'])) {
+                    $data['mautic_contact_id'] = (int)$lead['id'];
+                }
+            }
+            
+            // Fallback: Tenta extrair de 'results' (dados brutos do formulário)
+            $results = $event['submission']['results'] ?? $event['results'] ?? null;
+            if ($results) {
+                // Mapeamento manual de campos comuns de formulário
+                if (empty($data['email'])) $data['email'] = $results['email'] ?? null;
+                if (empty($data['phone'])) $data['phone'] = $results['phone'] ?? $results['telefono'] ?? $results['movil'] ?? null;
+                if (empty($data['name']))  $data['name']  = $results['firstname'] ?? $results['nombre'] ?? '';
+            }
         }
 
-        // Campos de form results
-        if ($results) {
-            $data['email'] = $data['email'] ?? $results['email'] ?? null;
-            $data['phone'] = $data['phone'] ?? $results['phone'] ?? $results['telefono'] ?? null;
-            if (empty($data['name'])) {
-                $data['name'] = $results['name'] ?? $results['nombre'] ?? '';
-            }
+        // 2. Tenta extrair de eventos de Lead (create/update)
+        // mautic.lead_post_save_new ou mautic.lead_post_save_update
+        $leadEvent = $payload['mautic.lead_post_save_new'][0]['lead'] 
+                  ?? $payload['mautic.lead_post_save_update'][0]['lead'] 
+                  ?? null;
+
+        if ($leadEvent && isset($leadEvent['fields']['core'])) {
+             $fields = $leadEvent['fields']['core'];
+             
+             $data['email'] = $fields['email']['value'] ?? null;
+             $data['phone'] = $fields['phone']['value'] ?? $fields['mobile']['value'] ?? null;
+             
+             $firstname = $fields['firstname']['value'] ?? '';
+             $lastname = $fields['lastname']['value'] ?? '';
+             $data['name'] = trim("$firstname $lastname");
+             
+             $data['company_name'] = $fields['company']['value'] ?? null;
+             
+             if (isset($leadEvent['id'])) {
+                $data['mautic_contact_id'] = (int)$leadEvent['id'];
+             }
         }
 
         return $data;
@@ -142,9 +194,12 @@ class MauticWebhookController extends Controller
 
     private function extractFormId(array $payload): ?int
     {
-        $id = $payload['form']['id']
-            ?? $payload['mautic.form_on_submit'][0]['form']['id']
+        // Tenta extrair ID do formulário de várias estruturas possíveis
+        $id = $payload['form']['id'] 
+            ?? $payload['mautic.form_on_submit'][0]['form']['id'] 
+            ?? $payload['mautic.form_on_submit'][0]['submission']['form']['id'] 
             ?? null;
+            
         return $id ? (int)$id : null;
     }
 }

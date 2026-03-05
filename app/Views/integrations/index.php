@@ -112,6 +112,25 @@
                                 value="<?=\App\Core\View::e($uazapi['webhook_secret'] ?? '')?>"
                                 placeholder="Cadena aleatoria para proteger el endpoint">
                         </div>
+                        
+                        <div class="row g-2 mb-3 border-top pt-3">
+                            <div class="col-12">
+                                <h6 class="small text-muted text-uppercase fw-bold">Alertas de Conexión</h6>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Email Alertas</label>
+                                <input type="email" name="alert_email" class="form-control"
+                                    value="<?=\App\Core\View::e($uazapi['alert_email'] ?? '')?>"
+                                    placeholder="hectorsolis@gmail.com">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">WhatsApp Alertas</label>
+                                <input type="text" name="alert_phone" class="form-control"
+                                    value="<?=\App\Core\View::e($uazapi['alert_phone'] ?? '')?>"
+                                    placeholder="+569...">
+                            </div>
+                        </div>
+
                         <button type="submit" class="btn btn-primary me-2"><i
                                 class="bi bi-save me-1"></i>Guardar</button>
                     </form>

@@ -38,6 +38,7 @@ define('APP_ENV',     env('APP_ENV', 'production'));
 define('APP_DEBUG',   env('APP_DEBUG', false));
 define('TIMEZONE',    env('TIMEZONE', 'America/Santiago'));
 define('APP_KEY',     env('APP_KEY', 'default_key_change_me'));
+define('APP_VERSION', env('APP_VERSION', '1.0.1'));
 
 // Directorio raíz
 define('BASE_PATH',   dirname(__DIR__));
@@ -48,6 +49,14 @@ define('LOG_PATH',    BASE_PATH . '/logs');
 
 // Zona horaria
 date_default_timezone_set(TIMEZONE);
+
+// Ajustar timezone do MySQL para corresponder ao PHP
+try {
+    $timezoneOffset = (new DateTime('now', new DateTimeZone(TIMEZONE)))->format('P');
+    // Não temos acesso direto ao PDO aqui, mas isso seria ideal no Database.php
+} catch (Exception $e) {
+    // Falha silenciosa
+}
 
 // Errores
 if (APP_DEBUG) {
